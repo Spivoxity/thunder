@@ -323,8 +323,6 @@ Rough instruction layout:
 #endif
 #define MARGIN 32	      /* Safety margin for switching buffers */
 
-extern void panic(char *msg, ...);
-
 static code_addr branch(OPDECL, code_addr lab);
 
 
@@ -491,7 +489,7 @@ static int make_literal(int val) {
      }
 
      if (nlits >= MAXLITS)
-          panic("too many literals");
+          vm_panic("too many literals");
      
      literals[nlits] = val;
      return 4*nlits++;
@@ -565,7 +563,7 @@ void vm_patch(code_addr loc, code_addr lab) {
      assert((off & 0x3) == 0);
      off >>= 2;
      if (off < -0x800000 || off >= 0x800000)
-          panic("branch offset out of range");
+          vm_panic("branch offset out of range");
      int *p = ((int *) loc);
      *p = (*p & ~0xffffff) | (off & 0xffffff);
 }
