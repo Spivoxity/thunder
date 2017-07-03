@@ -232,3 +232,25 @@ void *vm_scratch(int size);
 void *vm_alloc(int size);
 
 extern int vm_debug;
+
+
+/* Fancy _Generic stuff to provide overloading of vm_gen */
+
+#define _SELECT(p, q, r, s, t, ...) t
+
+#define vm_gen(...) \
+     _SELECT(__VA_ARGS__, vm_gen3, vm_gen2, vm_gen1, vm_gen0)(__VA_ARGS__)
+
+#define intcases(r) int: r, unsigned: r, char: r
+
+#define vm_gen1(op, a)                                                  \
+     _Generic(a, default: vm_gen1r, intcases(vm_gen1i),                 \
+              vmlabel: vm_gen1j)(op, a)
+
+#define vm_gen2(op, a, b)                                               \
+     _Generic(b, default: vm_gen2rr, intcases(vm_gen2ri))(op, a, b)
+
+#define vm_gen3(op, a, b, c)                                            \
+     _Generic(c, default: vm_gen3rrr, intcases(vm_gen3rri),             \
+              vmlabel: _Generic(b, default: vm_gen3rrj,                 \
+                                intcases(vm_gen3rij)))(op, a, b, c)
