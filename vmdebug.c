@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-int vm_debug;
+int vm_debug, vm_aflag;
 
 const char *vm_regname(vmreg r) {
      return r->vr_name;
@@ -65,31 +65,48 @@ void vm_unknown(const char *where, operation op) {
 #ifdef DEBUG
 void vm_debug1(int op, int nrands, ...) {
      va_list va;
-     int i;
 
-     if (vm_debug == 0) return;
+     if (vm_debug < 1) return;
 
      va_start(va, nrands);
      printf("--- %s", mnemonic[op]);
      if (nrands > 0) {
           printf(" %s", va_arg(va, char *));
-          for (i = 1; i < nrands; i++)
+          for (int i = 1; i < nrands; i++)
                printf(", %s", va_arg(va, char *));
      }
      printf("\n");
      va_end(va);
 }
 
+static code_addr start;
+
 void vm_debug2(const char *fmt, ...) {
      va_list va;
 
-     if (vm_debug == 0) return;
+     if (vm_debug < 2) return;
 
      va_start(va, fmt);
      printf("---   ");
      vprintf(fmt, va);
-     printf("\n");
      va_end(va);
+
+     start = pc;
+}
+
+void vm_done(void) {
+     if (vm_debug < 2) return;
+
+     if (pc > start && !vm_aflag) {
+          printf(" [");
+          int n = vm_print(start);
+          for (code_addr p = start+n; p < pc; p += n) {
+               printf(" ");
+               n = vm_print(p);
+          }
+          printf("]");
+     }
+     printf("\n");
 }
 
 char *fmt_val(int v) {
@@ -99,6 +116,8 @@ char *fmt_val(int v) {
      
      if (v > -2048 && v < 2048)
           sprintf(buf, "%d", v);
+     else if (vm_aflag)
+          sprintf(buf, "<addr>");
      else
           sprintf(buf, "%#x", v);
 

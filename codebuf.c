@@ -28,12 +28,21 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
 #include "vm.h"
 #include "vminternal.h"
-#include "config.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef LINUX
+#define USE_MPROTECT 1
+#endif
+
+#ifdef MACOS
+#define USE_MPROTECT 1
+#endif
+
 #ifdef USE_MPROTECT
 #include <sys/mman.h>
 #endif
@@ -50,22 +59,21 @@ void byte(int x) {
      *pc++ = x & 0xff;
 }
 
+/* modify -- modify previous byte */
+void modify(int bit) {
+     pc[-1] |= bit;
+}
+
 /* word -- contribute a whole word */
 void word(int x) {
      * (int *) pc = x;
      pc += 4;
 }
 
-/* vm_getpc -- fetch current pc value */
-code_addr vm_getpc(void) {
-     vm_space(0);
-     return pc;
-}
-
-/* vm_jtable -- allocate space for jump table */
-code_addr vm_jtable(int n) {
-     vm_space(n * sizeof(code_addr));
-     limit -= n * sizeof(code_addr);
+/* vm_literal -- allocate space in code buffer */
+code_addr vm_literal(int n) {
+     vm_space(n);
+     limit -= n;
      return limit;
 }
 
@@ -76,7 +84,7 @@ static int nfrags;
 #endif
 
 /* vm_begin -- begin new procedure */
-code_addr vm_begin(const char *name, int n) {
+code_addr vm_begin_locals(const char *name, int n, int locs) {
      proc_name = name;
      vm_space(MIN);
      proc_beg = pc;
@@ -85,7 +93,7 @@ code_addr vm_begin(const char *name, int n) {
      nfrags = 0; fragbeg[0] = pc;
 #endif
 
-     return vm_prelude(n);
+     return vm_prelude(n, locs);
 }
 
 /* vm_space -- ensure space in code buffer */
@@ -115,10 +123,8 @@ void vm_space(int space) {
 #ifdef USE_FLUSH
 /* vm_flush -- clear code from data cache */
 static void vm_flush(void) {
-     int i;
-
      // This is probably ARM-specific
-     for (i = 0; i < nfrags; i++)
+     for (int i = 0; i < nfrags; i++)
 	  __clear_cache(fragbeg[i], fragend[i]);
 }
 #endif
@@ -128,7 +134,7 @@ void vm_end(void) {
      vm_postlude();
      vm_reset();
 
-     if (vm_debug > 3) {
+     if (vm_debug >= 5) {
 	  // This is broken if we switched pages in mid-stream.
           char buf[128];
           strcpy(buf, proc_name);
@@ -146,3 +152,6 @@ void vm_end(void) {
 #endif
 }
 
+int vm_procsize(void) {
+     return pc - proc_beg;
+}

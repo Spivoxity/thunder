@@ -33,7 +33,7 @@
 
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT(obc, 0.1, mike@cs.ox.ac.uk)
+AC_INIT(thunder, 0.2, mike@cs.ox.ac.uk)
 AC_PREREQ(2.50)
 AC_CONFIG_SRCDIR(vm.h)
 AC_CONFIG_FILES(Makefile)

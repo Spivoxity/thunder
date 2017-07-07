@@ -31,6 +31,7 @@
 #define pc vm_pc
 #define byte vm_byte
 #define word vm_word
+#define modify vm_modify
 #define fmt_val vm_fmt_val
 #define fmt_lab vm_fmt_lab
 
@@ -41,30 +42,34 @@ struct _vmreg {
 
 #define BRANCH 1
 #define CASELAB 2
+#define ABS 3
 
 extern code_addr pc;
 
 void vm_space(int space);
 void byte(int x);
+void modify(int bit);
 void word(int x);
-code_addr vm_prelude(int n);
+code_addr vm_prelude(int n, int locs);
 void vm_postlude(void);
 void vm_chain(code_addr p);
 void vm_reset(void);
-code_addr vm_getpc(void);
 void vm_patch(code_addr loc, code_addr lab);
 void vm_branch(int kind, code_addr loc, vmlabel lab);
-code_addr vm_jtable(int n);
+code_addr vm_literal(int n);
 void vm_panic(const char *fmt, ...);
 void vm_unknown(const char *where, operation op);
+int vm_print(code_addr p);
 
 #ifdef DEBUG
 void vm_debug1(int op, int nrands, ...);
 void vm_debug2(const char *fmt, ...);
+void vm_done(void);
 char *fmt_val(int v);
 char *fmt_lab(vmlabel lab);
 #else
 #define vm_debug1(op, nrands, ...)
 #define vm_debug2(fmt, ...)
+#define vm_done()
 #endif
 

@@ -121,8 +121,9 @@ static void install(int kind, code_addr loc, code_addr val) {
      case BRANCH:
           vm_patch(loc, val);
           break;
+     case ABS:
      case CASELAB:
-          * (code_addr *) loc = val;
+          * (unsigned *) loc = (unsigned) (unsigned long) val;
           break;
      default:
           vm_panic("bad branch code");
@@ -131,18 +132,18 @@ static void install(int kind, code_addr loc, code_addr val) {
 
 /* vm_label -- place a label */
 void vm_label(vmlabel lab) {
-     code_addr val = vm_getpc(); 
-     branch p, q = NULL;
+     code_addr val = pc; 
+     branch q = NULL;
 
 #ifdef DEBUG
-     if (vm_debug > 0)
+     if (vm_debug >= 1)
           printf("--- %s:\n", fmt_lab(lab));
 #endif
 
      lab->l_val = val;
 
      /* Backpatch any forward branches to this location */
-     for (p = lab->l_branches; p != NULL; q = p, p = p->b_next)
+     for (branch p = lab->l_branches; p != NULL; q = p, p = p->b_next)
           install(p->b_kind, p->b_loc, val);
 
      /* Put the branch records back on the free-list */
@@ -174,12 +175,12 @@ void vm_reset(void) {
 
 /* Jump tables */
 
-static code_addr *caseptr;
+static unsigned *caseptr;
 
 /* vm_jumptable -- begin a jump table */
 code_addr vm_jumptable(int n) {
-     code_addr table = vm_jtable(n);
-     caseptr = (code_addr *) table;
+     code_addr table = vm_literal(n * sizeof(unsigned));
+     caseptr = (unsigned *) table;
      return table;
 }
 

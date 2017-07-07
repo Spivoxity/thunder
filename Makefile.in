@@ -70,6 +70,9 @@ libthunder.a: $(VM) labels.o vmdebug.o codebuf.o
 fact: fact.o libthunder.a
 	$(CC) $^ -o $@
 
+mgrep: mgrep.o libthunder.a
+	$(CC) $^ -o $@
+
 ## Cleanup
 
 # clean: remove all object files

@@ -6,21 +6,21 @@ typedef int (*funcp)(int);
 
 funcp compile(void) {
      code_addr entry;
-     vmreg xV0 = vreg[0], xV1 = vreg[1];
+     vmreg r0 = ireg[0], r1 = ireg[1];
      vmlabel lab1 = vm_newlab(), lab2 = vm_newlab();
 
      entry = vm_begin("fact", 1);
-     vm_gen(GETARG, xV0, 0);
-     vm_gen(MOV, xV1, 1);
+     vm_gen(GETARG, r0, 0);
+     vm_gen(MOV, r1, 1);
 
      vm_label(lab1);
-     vm_gen(BEQ, xV0, 0, lab2);
-     vm_gen(MUL, xV1, xV1, xV0);
-     vm_gen(SUB, xV0, xV0, 1);
+     vm_gen(BEQ, r0, 0, lab2);
+     vm_gen(MUL, r1, r1, r0);
+     vm_gen(SUB, r0, r0, 1);
      vm_gen(JUMP, lab1);
 
      vm_label(lab2);
-     vm_gen(MOV, ret, xV1);
+     vm_gen(MOV, ret, r1);
      vm_gen(RET);
 
      vm_end();
@@ -31,21 +31,21 @@ funcp compile(void) {
 funcp compile2(void) {
      code_addr entry;
      vmlabel lab1 = vm_newlab(), lab2 = vm_newlab();
-     vmreg xV0 = vreg[0], xV1 = vreg[1];
+     vmreg r0 = ireg[0], r1 = ireg[1];
 
      entry = vm_begin("fact", 1);
-     vm_gen(GETARG, xV0, 0);
+     vm_gen(GETARG, r0, 0);
 
-     vm_gen(BNEQ, xV0, 0, lab1);
+     vm_gen(BNE, r0, 0, lab1);
      vm_gen(MOV, ret, 1);
      vm_gen(JUMP, lab2);
      
      vm_label(lab1);
-     vm_gen(SUB, xV1, xV0, 1);
+     vm_gen(SUB, r1, r0, 1);
      vm_gen(PREP, 1);
-     vm_gen(ARG, xV1);
+     vm_gen(ARG, r1);
      vm_gen(CALL, (int) entry);
-     vm_gen(MUL, ret, xV0, ret);
+     vm_gen(MUL, ret, r0, ret);
 
      vm_label(lab2);
      vm_gen(RET);
