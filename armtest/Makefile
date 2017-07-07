@@ -1,5 +1,5 @@
 #
-# @configure_input@
+# Makefile.  Generated from Makefile.in by configure.
 #
 # thunder/Makefile.in
 # 
@@ -31,27 +31,24 @@
 #
 
 # Config stuff
-CC = @CC@
-AR = ar
-RANLIB = @RANLIB@
-CFLAGS = @CFLAGS@
-RTFLAGS = @RTFLAGS@
-srcdir = @srcdir@
-top_srcdir = @top_srcdir@
-prefix = @prefix@
-exec_prefix = @exec_prefix@
+CC = arm-linux-gnueabihf-gcc
+AR = arm-linux-gnueabihf-ar
+RANLIB = arm-linux-gnueabihf-ranlib
+CFLAGS = -g -O2
+RTFLAGS = ${CFLAGS} -fno-strict-aliasing
 SHELL = /bin/sh
-DEBUG = @DEBUG@
-VPATH = @srcdir@
-PAGESIZE = @PAGESIZE@
-VM = @VM@
-AUTOCONF = @AUTOCONF@
-AUTOHEADER = @AUTOHEADER@
+DEBUG = 1
+VPATH = ../lib
+PAGESIZE = 4096
+VM = vmpi.o
 # End
+
+vpath %.c ..
+vpath %.h ..
 
 all: libthunder.a
 
-ALL_CFLAGS = $(RTFLAGS) -Wall -I . -I $(srcdir)
+ALL_CFLAGS = $(RTFLAGS) -Wall -I ..
 
 libthunder.a: $(VM) labels.o vmdebug.o codebuf.o
 	$(AR) cr $@ $^; $(RANLIB) $@
@@ -76,36 +73,12 @@ quiteclean: clean
 
 # distclean: also remove all non-distributed files
 distclean: quiteclean
-	rm -f Makefile config.h stamp-h
 
 realclean: distclean
-	rm -f config.h.in stamp-h.in configure
 
 .DELETE_ON_ERROR:
 
-## Configuration and dependencies
-
-# Automatic reconfiguration
-
-$(srcdir)/configure: configure.in aclocal.m4
-	cd $(srcdir) && $(AUTOCONF)
-
-config.status: configure
-	./config.status --recheck
-
-$(srcdir)/config.h.in: stamp-h.in
-$(srcdir)/stamp-h.in: configure.in aclocal.m4
-	cd $(srcdir) && $(AUTOHEADER)
-	echo timestamp >$(srcdir)/stamp-h.in
-
-config.h: stamp-h
-stamp-h: config.h.in config.status
-	CONFIG_FILES= CONFIG_HEADERS=config.h ./config.status
-	echo timestamp >stamp-h
-
-Makefile: $(srcdir)/Makefile.in config.status
-	./config.status $@
-
 ###
 
-$(VM) codebuf.o labels.o vmdebug.o fact.o: vm.h config.h vminternal.h
+$(VM) codebuf.o labels.o vmdebug.o fact.o mgrep.o: \
+	vm.h config.h vminternal.h

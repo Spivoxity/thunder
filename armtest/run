@@ -1,0 +1,5 @@
+#!/bin/sh
+LIBDIR=/usr/arm-linux-gnueabihf/lib
+env qemu-arm -B 0x100000 $LIBDIR/ld-linux.so.3 \
+    --library-path $LIBDIR $@
+
