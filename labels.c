@@ -28,9 +28,9 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
 #include "vm.h"
 #include "vminternal.h"
-#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -123,7 +123,7 @@ static void install(int kind, code_addr loc, code_addr val) {
           break;
      case ABS:
      case CASELAB:
-          * (unsigned *) loc = (unsigned) (unsigned long) val;
+          * (unsigned *) loc = (unsigned) (ptr) val;
           break;
      default:
           vm_panic("bad branch code");
@@ -178,10 +178,10 @@ void vm_reset(void) {
 static unsigned *caseptr;
 
 /* vm_jumptable -- begin a jump table */
-code_addr vm_jumptable(int n) {
+int vm_jumptable(int n) {
      code_addr table = vm_literal(n * sizeof(unsigned));
      caseptr = (unsigned *) table;
-     return table;
+     return vm_addr(*table);
 }
 
 /* vm_caselab -- add an address to the current jump table */

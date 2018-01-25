@@ -87,8 +87,8 @@ struct _vmreg
      reg_v3 = { "V3", rBP };
 
 /* Register layout for use by JIT client */
-const int nvreg = 4, nireg = 7;
-const vmreg ireg[] = {
+const int vm_nvreg = 4, vm_nireg = 7;
+const vmreg vm_ireg[] = {
      &reg_v0, &reg_v1, &reg_v2, &reg_v3,  /* Callee-save */
      &reg_i0, &reg_i1, &reg_i2            /* Caller-save */
 };
@@ -129,8 +129,8 @@ struct _vmreg
      reg_v0 = { "V0", rBX },
      reg_v1 = { "V1", rBP };
 
-const int nvreg = 2, nireg = 11;
-const vmreg ireg[] = {
+const int vm_nvreg = 2, vm_nireg = 11;
+const vmreg vm_ireg[] = {
      &reg_v0, &reg_v1,          /* Callee-save */
      &reg_i0, &reg_i1, &reg_i2, /* Caller-save */
      &reg_i3, &reg_i4, &reg_i5, &reg_i6, &reg_i7, &reg_i8
@@ -138,13 +138,13 @@ const vmreg ireg[] = {
 
 #endif
 
-const int nfreg = 6;
-const vmreg freg[] = {
+const int vm_nfreg = 6;
+const vmreg vm_freg[] = {
      &reg_f0, &reg_f1, &reg_f2, /* Floating point for all variants */
      &reg_f3, &reg_f4, &reg_f5
 };
 
-const vmreg ret = &reg_i0, base = &reg_sp;
+const vmreg vm_ret = &reg_i0, vm_base = &reg_sp;
 
 #define register(r) ((r)&0x7)
 
@@ -180,22 +180,27 @@ static char **regname = &_regname[1];
 static char *fmt_addrx(int rb, int imm, int rx, int s) {
      static char buf[32], sbuf[32];
 
-     char *mmm = (imm != 0 ? fmt_val(imm) : "");
-
-     if (s == 0)
-          strcpy(sbuf, "");
-     else
-          sprintf(sbuf, "<<%d", s);
-        
      if (rb == NOREG && rx == NOREG)
           sprintf(buf, "%s", fmt_val(imm));
-     else if (rx == NOREG)
-          sprintf(buf, "%s(%s)", mmm, regname[rb]);
-     else if (rb == NOREG)
-          sprintf(buf, "%s(%s%s)", mmm, regname[rx], sbuf);
-     else
-          sprintf(buf, "%s(%s+%s%s)", mmm, regname[rb], regname[rx], sbuf);
+     else {
+          char *mmm = (imm != 0 ? fmt_val(imm) : "");
 
+          if (rx == NOREG)
+               sprintf(buf, "%s(%s)", mmm, regname[rb]);
+          else {
+               if (s == 0)
+                    strcpy(sbuf, "");
+               else
+                    sprintf(sbuf, "<<%d", s);
+        
+               if (rb == NOREG)
+                    sprintf(buf, "%s(%s%s)", mmm, regname[rx], sbuf);
+               else
+                    sprintf(buf, "%s(%s+%s%s)", mmm, regname[rb],
+                            regname[rx], sbuf);
+          }
+     }
+     
      return buf;
 }
 
@@ -486,27 +491,24 @@ static void memoryx(int ra, int rb, int d, int rx, int s) {
      Most of the time (with no indexing), we need a (mode, reg, r/m) 
      triple, where mode determines the size of displacement 
      (0 = none, 1 = byte, 2 = word), and r/m is the base register.
-     but there are special cases involving the registers rSP = 4
-     and rBP = 5:
+     but there are special cases involving the registers rSP=4
+     and rBP=5:
 
      A: (0,ra,rb)		[rb]			rb != rBP, rSP
-     B: (0,ra,4) (s,rx,rb)	[rb + rx<<s]*		rx != rSP; rb != rBP
-     C: (0,ra,4) (s,rx,5) d32	[d32 + rx<<s]*		rx != rSP
-     D: (0,ra,4) (s,4,rb) 	[rb]			rb != rBP
-     E: (0,ra,4) (s,4,5) d32	[d32]	
-     F: (0,ra,5) d32		[d32] on i386; [pc + d32] on amd64
-     G: (1,ra,4) (s,rx,rb) d8	[rb + d8 + rx<<s]*	rx != rSP
-     H: (1,ra,4) (s,4,rb) d8	[rb + d8]
-     I: (1,ra,rb) d8		[rb + d8]		rb != rSP
-     J: (2,ra,4) (s,rx,rb) d32	[rb + d32 + rx<<s]*	rx != rSP
-     K: (2,ra,4) (s,4,rb) d32	[rb + d32]*
-     L: (2,ra,rb) d32		[rb + d32]*		rb != rSP 
+     B: (0,ra,4)  (s,rx,rb)	[rb + rx<<s]		rx != rSP; rb != rBP
+     C: (0,ra,4)  (s,rx,5)  d32	[d32 + rx<<s]		rx != rSP
+     D: (0,ra,4)  (s,4,rb) 	[rb]			rb != rBP
+     E: (0,ra,4)  (s,4,5)   d32	[d32]	
+     F: (0,ra,5)            d32	[d32] on i386; [pc + d32] on amd64
+     G: (1,ra,4)  (s,rx,rb) d8	[rb + d8 + rx<<s]	rx != rSP
+     H: (1,ra,4)  (s,4,rb)  d8	[rb + d8]
+     I: (1,ra,rb)           d8	[rb + d8]		rb != rSP
+     J: (2,ra,4)  (s,rx,rb) d32	[rb + d32 + rx<<s]	rx != rSP
+     K: (2,ra,4)  (s,4,rb)  d32	[rb + d32]*
+     L: (2,ra,rb)           d32	[rb + d32]*		rb != rSP 
 
      (On amd64, registers 12 and 13 also trigger the special cases,
      but we don't use them.) 
-
-     For [rBP], use (1,ra,rBP) byte(0).
-     For [rSP + d8], use (1,ra,4) (0,4,rSP) d8. 
 
      Where it's possible that a negative offset is taken from a
      register, we use an addr32 prefix to ensure the top 32 bits
@@ -548,10 +550,10 @@ static void memoryx(int ra, int rb, int d, int rx, int s) {
 	  else
 	       SXTOFF, addr(2, ra, rb), word(d); // {L}
      } else if (rb == NOREG) {
-          // Baseless addressing
+          // Baseless addressing [d+rx<<s]
           addr(0, ra, 4), sib(s, rx, 5), word(d); // {C}
      } else {
-          // Scaled addressing
+          // Scaled addressing [rb+d+rx<<s]
           if (d == 0 && rb != rBP)
                SXTOFF, addr(0, ra, 4), sib(s, rx, rb); // {B}
           else if (signed8(d))
@@ -562,7 +564,7 @@ static void memoryx(int ra, int rb, int d, int rx, int s) {
 }
 
 
-/* ASSEMBLY ROUTINES for various instructions formats.  
+/* ASSEMBLY ROUTINES for various instruction formats.  
    These each produce debugging ouput.
 
    An instruction can have:
@@ -827,9 +829,8 @@ static void storecx(int rt, int rb, int imm, int rx, int s) {
 #ifdef M64X32
           instr_stx(REX_(opMOVB_m), rt, rb, imm, rx, s);
 #else
-	  int rz = ( rb == rAX ? (rx == rDX ? rCX : rDX)
-                   : rb == rDX ? (rx == rCX ? rAX : rCX)
-                   :             (rx == rAX ? rDX : rAX) );
+	  int rz = ( (rb != rAX && rx != rAX) ? rAX :
+                     (rb != rDX && rx != rDX) ? rDX : rCX);
 	  push_r(rz); move(rz, rt);
           if (rb == rSP) imm += 4; // Compensate for push
 	  instr_stx(opMOVB_m, rz, rb, imm, rx, s);
@@ -1117,12 +1118,12 @@ void call_i(int a) {
      post_call();
 }     
 
-code_addr vm_prelude(int n, int locs) {
+int vm_prelude(int n, int locs) {
      code_addr entry = pc;
      locals = (locs+3)&~3;
      push_r(rBP); push_r(rBX); push_r(rSI); push_r(rDI); 
      if (locals > 0) sub_i(rSP, locals);
-     return entry;
+     return (int) entry;
 }
 
 static void retn(void) {
@@ -1133,20 +1134,21 @@ static void retn(void) {
 
 #else
 /*
-On AMD64, the frame layout is like this, with 8 byte slots:
+On Linux/amd64, the frame layout is like this, with 8 byte slots:
 
 old sp:
         return address
         saved rbp
         saved rbx
         saved args if n > 1
-sp:     blank space
+        blank space
+sp:     locals
 
 If there is only one incoming arg (the most common case) we don't bother 
 to save it in the stack, as the GETARG instruction will save it immediately.
 The ABI requires sp to be a multiple of 16 when another routine is called, 
 so 8 bytes of blank space is needed unless n is odd and > 1.  The incoming 
-args are addressible at sp+blank.  (Note: we only support one arg 
+args are addressible at sp+locs+blank.  (Note: we only support one arg 
 at present.)
 
 Outgoing arguments are passed in rDI, rSI, rDX.  Register arguments are left
@@ -1165,6 +1167,8 @@ sp:	outgoing shadow area
 
 Outgoing arguments are passed in rCX, rDX, r8.
 */
+
+static int inargs;
 
 static int argnum;              /* Last argument pushed */
 static int argreg[3];   	/* Whether each arg is a register */
@@ -1226,7 +1230,7 @@ static int out[] = {
 #endif
 };
 
-/* Move args from into correct registers */
+/* Move args into correct registers */
 static void move_args() {
      // Permute the registers
      for (int i = 0; i < nargs; i++) {
@@ -1265,26 +1269,38 @@ static void call_i(int a) {
      instr2_m(opCALL, NOREG, a);
 }     
 
-code_addr vm_prelude(int n, int locs) {
+int vm_prelude(int n, int locs) {
      code_addr entry = pc;
+     inargs = n;
      push_r(rBP); push_r(rBX);
 #ifdef WINDOWS     
+     if (n > 1) vm_panic("sorry, only one parameter allowed today");
+     if (locs > 0) vm_panic("sorry, no local variables allowed");
+     locals = 0;
      push_r(rSI); push_r(rDI);
      sub64_i(rSP, 40);
 #else
-     sub64_i(rSP, 8);
+     int argsp = 0;
+     if (n > 1) {
+          argsp = 8*n;
+          if (n > 2) push_r(rDX);
+          push_r(rSI); push_r(rDI);
+     }
+     int space = locs + argsp + 24;
+     space = (space + 15) & ~0xf;
+     locals = space - 24;
+     if (locals > argsp)
+          sub64_i(rSP, locals - argsp);
 #endif
-     if (locs > 0) vm_panic("sorry, no local variables allowed");
-     if (n > 1) vm_panic("sorry, only one parameter allowed today");
-     return entry;
+     return vm_wrap((funptr) entry);
 }
 
 static void retn(void) {
 #ifdef WINDOWS
-          add64_i(rSP, 40 + locals);
+          add64_i(rSP, 40);
 	  pop(rDI); pop(rSI); pop(rBX); pop(rBP);
 #else
-	  add64_i(rSP, 8 + locals);
+	  add64_i(rSP, locals);
 	  pop(rBX); pop(rBP);
 #endif
           instr(opRET);
@@ -1453,7 +1469,10 @@ void vm_gen2ri(operation op, vmreg rega, int b) {
 	  load(ra, rSP, 4*b+locals+20); 
 #else
 #ifndef WINDOWS
-          move(ra, rDI);
+          if (inargs == 1)
+               move(ra, rDI);
+          else
+               load(ra, rSP, locals - 8*(inargs-b));
 #else
 	  move(ra, rCX);
 #endif
@@ -1603,6 +1622,57 @@ void vm_gen3rrr(operation op, vmreg rega, vmreg regb, vmreg regc) {
           commute64(REXW_(opIMUL_r), ra, rb, rc); break;
 #endif
            
+     case LDW:
+	  if (isfloat(ra)) 
+               floadsx(ra, rc, 0, rb, 0); 
+          else 
+               instr_rmx(opMOVL_r, ra, rc, 0, rb, 0); 
+	  break;
+     case LDSu: 
+          instr_rmx(opMOVZWL_r, ra, rc, 0, rb, 0); break;
+     case LDBu:
+          instr_rmx(opMOVZBL_r, ra, rc, 0, rb, 0); break;
+     case LDS:
+	  instr_rmx(opMOVSWL_r, ra, rc, 0, rb, 0); break;
+     case LDB:
+          instr_rmx(opMOVSBL_r, ra, rc, 0, rb, 0); break;
+
+     case STW: 
+	  if (isfloat(ra)) 
+               fstoresx(ra, rc, 0, rb, 0); 
+          else 
+               instr_stx(opMOVL_m, ra, rc, 0, rb, 0);
+	  break;
+     case STS: 
+          instr_stx(opMOVW_m, ra, rc, 0, rb, 0); break;
+     case STB:
+          storecx(ra, rc, 0, rb, 0); break;
+
+
+#ifndef M64X32
+     case LDQ: 
+          assert(isfloat(ra));
+          floadlx(ra, rc, 0, rb, 0);
+          break;
+     case STQ:    
+          assert(isfloat(ra));
+          fstorelx(ra, rc, 0, rb, 0);
+          break;
+#else
+     case LDQ: 
+          if (isfloat(ra))
+               floadlx(ra, rc, 0, rb, 0);
+          else
+               instr_rmx(REXW_(opMOVL_r), ra, rc, 0, rb, 0);
+          break;
+     case STQ:    
+          if (isfloat(ra))
+               fstorelx(ra, rc, 0, rb, 0);
+          else
+               instr_stx(REXW_(opMOVL_m), ra, rc, 0, rb, 0);
+          break;
+#endif
+               
      case IDXS:
           instr_rmx(opLEA, ra, rc, 0, rb, 1); break;
      case IDXW:
@@ -1610,8 +1680,6 @@ void vm_gen3rrr(operation op, vmreg rega, vmreg regb, vmreg regc) {
      case IDXQ:
           instr_rmx(opLEA, ra, rc, 0, rb, 3); break;
 
-     case LDBux:
-          instr_rmx(opMOVZBL_r, ra, rc, 0, rb, 0); break;
      case LDSx:
           instr_rmx(opMOVSWL_r, ra, rc, 0, rb, 1); break;
      case LDWx:
@@ -1621,8 +1689,6 @@ void vm_gen3rrr(operation op, vmreg rega, vmreg regb, vmreg regc) {
                instr_rmx(opMOVL_r, ra, rc, 0, rb, 2);
           break;
 
-     case STBx:
-          storecx(ra, rc, 0, rb, 0); break;
      case STSx:
           instr_stx(opMOVW_m, ra, rc, 0, rb, 1); break;
      case STWx:
@@ -1758,8 +1824,6 @@ void vm_gen3rri(operation op, vmreg rega, vmreg regb, int c) {
      case IDXQ:
           instr_rmx(opLEA, ra, NOREG, c, rb, 3); break;
 
-     case LDBux:
-          instr_rmx(opMOVZBL_r, ra, NOREG, c, rb, 0); break;
      case LDSx:
           instr_rmx(opMOVSWL_r, ra, NOREG, c, rb, 1); break;
      case LDWx:
@@ -1769,8 +1833,6 @@ void vm_gen3rri(operation op, vmreg rega, vmreg regb, int c) {
                instr_rmx(opMOVL_r, ra, NOREG, c, rb, 2);
           break;
           
-     case STBx:
-          storecx(ra, NOREG, c, rb, 0); break;
      case STSx:
           instr_stx(opMOVW_m, ra, NOREG, c, rb, 1); break;
      case STWx:
@@ -1831,7 +1893,7 @@ static void vm_load_store(operation op, int ra, int rb, int c) {
 	  break;
      case STS: 
           instr_st(opMOVW_m, ra, rb, c); break;
-     case STC: 
+     case STB: 
 	  storec(ra, rb, c); break;
 
 #ifndef M64X32

@@ -90,16 +90,16 @@ struct _vmreg
      reg_rr = { "RET", R0 },
      reg_sp = { "BASE", SP };
 
-const int nvreg = 7, nireg = 8, nfreg = 7;
-const vmreg ireg[] = {
+const int vm_nvreg = 7, vm_nireg = 8, vm_nfreg = 7;
+const vmreg vm_ireg[] = {
      &reg_v0, &reg_v1, &reg_v2, &reg_v3, &reg_v4, &reg_v5, &reg_v6,
      &reg_i0
 };
-const vmreg freg[] = {
+const vmreg vm_freg[] = {
      &reg_f0, &reg_f1, &reg_f2, &reg_f3,
      &reg_f4, &reg_f5, &reg_f6
 };
-const vmreg ret = &reg_rr, base = &reg_sp;
+const vmreg vm_ret = &reg_rr, vm_base = &reg_sp;
 
 #define isfloat(r) (((r)&0x10) != 0)
 
@@ -1114,9 +1114,14 @@ void vm_gen3rrr(operation op, vmreg rega, vmreg regb, vmreg regc) {
           write_reg(ra);
           op_rrrs(opADD, ra, rc, rb, 3); break;
 
-     case LDBux:
+     case LDBu:
           write_reg(ra);
           ldst_rr(opLDRB, ra, rc, rb, 0); break;
+     case STB:
+          ldst_rr(opSTRB, ra, rc, rb, 0); break;
+
+          /* Should have other reg+reg loads and stores too */
+
      case LDSx:
           write_reg(ra);
           load_store_x(opLDSH, ra, index_r(rc, rb, 1), 0); break;
@@ -1132,8 +1137,6 @@ void vm_gen3rrr(operation op, vmreg rega, vmreg regb, vmreg regc) {
           load_store_d(opFLDS, ra, index_r(rc, rb, 3), 0);
           break;
 
-     case STBx:
-          ldst_rr(opSTRB, ra, rc, rb, 0); break;
      case STSx:
           load_store_x(opSTRH, ra, index_r(rc, rb, 1), 0); break;
      case STWx:
@@ -1216,9 +1219,6 @@ void vm_gen3rri(operation op, vmreg rega, vmreg regb, int c) {
           write_reg(ra);
           op_rrrs(opADD, ra, const_reg(c), rb, 3); break;
 
-     case LDBux:
-          write_reg(ra);
-          ldst_rr(opLDRB, ra, const_reg(c), rb, 0); break;
      case LDSx:
           write_reg(ra);
           load_store_x(opLDSH, ra, index_i(c, rb, 1), 0); break;
@@ -1233,8 +1233,6 @@ void vm_gen3rri(operation op, vmreg rega, vmreg regb, int c) {
           assert(isfloat(ra));
           load_store_d(opFLDS, ra, index_i(c, rb, 3), 0); break;
 
-     case STBx:
-          ldst_rr(opSTRB, ra, const_reg(c), rb, 0); break;
      case STSx:
           load_store_x(opSTRH, ra, index_i(c, rb, 1), 0); break;
      case STWx:
@@ -1284,7 +1282,7 @@ static void vm_load_store(operation op, int ra, int rb, int c) {
      case LDBu: 
           write_reg(ra);
 	  load_store(opLDRB, ra, rb, c); break;
-     case STC: 
+     case STB: 
 	  load_store(opSTRB, ra, rb, c); break;
 
      case LDQ: 
@@ -1332,8 +1330,8 @@ Result of FCMP
 	<	=	>	Unord
 NZCV =	1000	0110	0010	0011
 
-Keiko						ARM
------						---
+Thunder						ARM
+-------						---
 BEQ     F       T       F       F       Z	BEQ
 BLT     T       F       F       F       !C	BLO (or BMI)
 BLE     T       T       F       F       Z|!C    BLS
@@ -1430,7 +1428,7 @@ static code_addr cploc;
 static code_addr entry;
 static int locals;
 
-code_addr vm_prelude(int n, int locs) {
+int vm_prelude(int n, int locs) {
      nlits = 0;
      regmap = 0;
      retchain = NULL;
@@ -1445,7 +1443,7 @@ code_addr vm_prelude(int n, int locs) {
      move_reg(FP, SP);
      if (locals > 0) arith_immed(opSUB, SP, SP, locals);
 
-     return entry;
+     return (int) entry;
 }
 
 void vm_chain(code_addr p) {

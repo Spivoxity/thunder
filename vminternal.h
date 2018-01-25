@@ -35,6 +35,17 @@
 #define fmt_val vm_fmt_val
 #define fmt_lab vm_fmt_lab
 
+typedef unsigned char *code_addr;
+
+typedef long long int64;
+typedef unsigned long long uint64;
+
+#ifdef M64X32
+typedef uint64 ptr;
+#else
+typedef unsigned ptr;
+#endif
+
 struct _vmreg {
      const char *vr_name;
      int vr_reg;
@@ -50,7 +61,7 @@ void vm_space(int space);
 void byte(int x);
 void modify(int bit);
 void word(int x);
-code_addr vm_prelude(int n, int locs);
+int vm_prelude(int n, int locs);
 void vm_postlude(void);
 void vm_chain(code_addr p);
 void vm_reset(void);

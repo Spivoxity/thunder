@@ -28,8 +28,6 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-typedef unsigned char *code_addr;
-
 /* Expand a macro once for each VM opcode */
 #define __OP__(p) \
      /* Integer arithmetic */                                       \
@@ -55,7 +53,7 @@ typedef unsigned char *code_addr;
      p(CONVid) p(CONVis)                                            \
      /* Load and store */                                           \
      p(LDB) p(LDBu) p(LDS) p(LDSu) p(LDW) p(LDQ)                    \
-     p(STW) p(STC) p(STQ) p(STS) p(LDKW)                            \
+     p(STW) p(STB) p(STQ) p(STS) p(LDKW)                            \
      /* Call and return */                                          \
      p(PREP) p(ARG) p(CALL) p(GETARG) p(RET) p(JUMP)                \
      /* 64-bit arithmetic (M64X32 only) */                          \
@@ -63,7 +61,7 @@ typedef unsigned char *code_addr;
      p(LTq) p(LEq) p(EQq) p(GEq) p(GTq) p(NEq)                      \
      p(BLTq) p(BLEq) p(BEQq) p(BGEq) p(BGTq) p(BNEq)                \
      /* Indexed loads and stores */                                 \
-     p(LDWx) p(STWx) p(LDBux) p(STBx) p(LDQx) p(STQx)               \
+     p(LDWx) p(STWx) p(LDQx) p(STQx)                                \
      p(LDSx) p(STSx) p(IDXS) p(IDXW) p(IDXQ)
 
 #define __op1__(op) op,
@@ -222,8 +220,8 @@ Keiko assumes nvreg+nireg >= 5.
 
 typedef struct _vmreg *vmreg;
 
-extern const int nvreg, nireg, nfreg;
-extern const vmreg ireg[], freg[], ret, base;
+extern const int vm_nvreg, vm_nireg, vm_nfreg;
+extern const vmreg vm_ireg[], vm_freg[], vm_ret, vm_base;
 
 const char *vm_regname(vmreg r);
 
@@ -244,16 +242,23 @@ void vm_gen3rri(operation op, vmreg a, vmreg b, int c);
 void vm_gen3rrj(operation op, vmreg a, vmreg b, vmlabel lab);
 void vm_gen3rij(operation op, vmreg a, int b, vmlabel lab);
 
-#define vm_addr(x) ((int) (long) &(x))
+#define vm_addr(x) _vm_addr(&(x))
+int _vm_addr(void *x);
 
-code_addr vm_begin_locals(const char *name, int n, int locs);
+unsigned vm_begin_locals(const char *name, int n, int locs);
 #define vm_begin(name, n) vm_begin_locals(name, n, 0);
 void vm_end(void);
 
-code_addr vm_jumptable(int n);
+int vm_jumptable(int n);
 void vm_caselab(vmlabel lab);
 
 void *vm_scratch(int size);
+
+typedef void (*funptr)(void);
+
+int vm_wrap(funptr fun);
+
+funptr vm_func(int fun);
 
 /* vm_procsize -- size of last procedure */
 int vm_procsize(void);
