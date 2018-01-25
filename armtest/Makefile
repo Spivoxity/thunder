@@ -48,7 +48,7 @@ vpath %.h ..
 
 all: libthunder.a
 
-ALL_CFLAGS = $(RTFLAGS) -Wall -I ..
+ALL_CFLAGS = $(RTFLAGS) -Wall -I . -I ..
 
 libthunder.a: $(VM) labels.o vmdebug.o codebuf.o
 	$(AR) cr $@ $^; $(RANLIB) $@

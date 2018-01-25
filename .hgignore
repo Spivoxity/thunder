@@ -1,7 +1,6 @@
 syntax: glob
 Makefile
 armtest/codebuf.o
-armtest/config.h
 armtest/fact
 armtest/fact.o
 armtest/labels.o
@@ -26,3 +25,4 @@ stamp-h.in
 vm386.o
 vmdebug.o
 fact.o
+autom4te.cache
