@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
+
+extern void *vm_literal(int n);
 
 typedef int (*funcp)(int);
 
@@ -62,14 +65,14 @@ funcp compile2(void) {
 
 static float a[] = { 3.0, 1.0, 4.0, 1.0, 5.0, 9.0 };
 
-#include <string.h>
-
-void *vm_literal(int n);
-
 void (*compile3(void))(int, float *) {
+     float *aa = a;
+
+#ifdef M64X32
      /* On amd64, we need to put the array in addressible storage */
-     float *aa = (float *) vm_literal(sizeof(a));
+     aa = (float *) vm_literal(sizeof(a));
      memcpy(aa, a, sizeof(a));
+#endif
 
      int entry;
      vmlabel lab1 = vm_newlab(), lab2 = vm_newlab();
@@ -107,6 +110,7 @@ int (*compile4(void))(void) {
      vm_gen(LDB, y, vm_base, 0);
      vm_gen(MOV, vm_ret, y);
      vm_gen(RET);
+     vm_end();
      return (int (*)(void)) vm_func(entry);
 }
 

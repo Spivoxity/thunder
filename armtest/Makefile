@@ -43,12 +43,12 @@ PAGESIZE = 4096
 VM = vmpi.o
 # End
 
-vpath %.c ..
-vpath %.h ..
+vpath %.c ..:../src
+vpath %.h ../src
 
 all: libthunder.a
 
-ALL_CFLAGS = $(RTFLAGS) -Wall -I . -I ..
+ALL_CFLAGS = $(RTFLAGS) -Wall -I . -I ../src
 
 libthunder.a: $(VM) labels.o vmdebug.o codebuf.o
 	$(AR) cr $@ $^; $(RANLIB) $@

@@ -35,7 +35,7 @@
 
 AC_INIT(thunder, 0.3, mike@cs.ox.ac.uk)
 AC_PREREQ(2.50)
-AC_CONFIG_SRCDIR(vm.h)
+AC_CONFIG_SRCDIR(src/vm.h)
 AC_CONFIG_FILES(Makefile)
 AC_CONFIG_HEADERS(config.h)
 AC_CANONICAL_HOST

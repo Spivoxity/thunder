@@ -36,13 +36,10 @@ AR = ar
 RANLIB = @RANLIB@
 CFLAGS = @CFLAGS@
 RTFLAGS = @RTFLAGS@
-srcdir = @srcdir@
-top_srcdir = @top_srcdir@
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 SHELL = /bin/sh
 DEBUG = @DEBUG@
-VPATH = @srcdir@
 PAGESIZE = @PAGESIZE@
 VM = @VM@
 AUTOCONF = @AUTOCONF@
@@ -51,15 +48,15 @@ AUTOHEADER = @AUTOHEADER@
 
 all: libthunder.a
 
-ALL_CFLAGS = $(RTFLAGS) -Wall -I . -I $(srcdir)
+ALL_CFLAGS = $(RTFLAGS) -Wall -I . -I src 
 
-libthunder.a: $(VM) labels.o vmdebug.o codebuf.o
+libthunder.a: src/$(VM) src/labels.o src/vmdebug.o src/codebuf.o
 	$(AR) cr $@ $^; $(RANLIB) $@
 
 %.o : %.c
 	$(CC) $(ALL_CFLAGS) -c $< -o $@
 
-fact: fact.o libthunder.a
+fact: src/fact.o libthunder.a
 	$(CC) $^ -o $@
 
 mgrep: mgrep.o libthunder.a
@@ -69,7 +66,7 @@ mgrep: mgrep.o libthunder.a
 
 # clean: remove all object files
 clean:
-	rm -f *.[ao]
+	rm -f libthunder.a src/*.o
 
 quiteclean: clean
 	rm -f fact mgrep
@@ -87,25 +84,26 @@ realclean: distclean
 
 # Automatic reconfiguration
 
-$(srcdir)/configure: configure.in aclocal.m4
-	cd $(srcdir) && $(AUTOCONF)
+configure: configure.in aclocal.m4
+	$(AUTOCONF)
 
 config.status: configure
 	./config.status --recheck
 
-$(srcdir)/config.h.in: stamp-h.in
-$(srcdir)/stamp-h.in: configure.in aclocal.m4
-	cd $(srcdir) && $(AUTOHEADER)
-	echo timestamp >$(srcdir)/stamp-h.in
+config.h.in: stamp-h.in
+stamp-h.in: configure.in aclocal.m4
+	$(AUTOHEADER)
+	echo timestamp >stamp-h.in
 
 config.h: stamp-h
 stamp-h: config.h.in config.status
 	CONFIG_FILES= CONFIG_HEADERS=config.h ./config.status
 	echo timestamp >stamp-h
 
-Makefile: $(srcdir)/Makefile.in config.status
+Makefile: Makefile.in config.status
 	./config.status $@
 
 ###
 
-$(VM) codebuf.o labels.o vmdebug.o fact.o: vm.h config.h vminternal.h
+src/$(VM) src/codebuf.o src/labels.o src/vmdebug.o fact.o: \
+	src/vm.h config.h src/vminternal.h
