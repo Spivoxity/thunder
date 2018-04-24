@@ -3,9 +3,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include <string.h>
-
-extern void *vm_literal(int n);
 
 typedef int (*funcp)(int);
 
@@ -26,7 +23,6 @@ funcp compile(void) {
 
      vm_label(lab2);
      vm_gen(MOV, vm_ret, r1);
-     vm_gen(RET);
 
      vm_end();
 
@@ -57,22 +53,18 @@ funcp compile2(void) {
      vm_gen(MUL, vm_ret, r0, vm_ret);
      
      vm_label(lab2);
-     vm_gen(RET);
-
      vm_end();
      return (funcp) vm_func(entry);
 }
 
 static float a[] = { 3.0, 1.0, 4.0, 1.0, 5.0, 9.0 };
 
-void (*compile3(void))(int, float *) {
-     float *aa = a;
+#include <string.h>
 
-#ifdef M64X32
+void (*compile3(void))(int, float *) {
      /* On amd64, we need to put the array in addressible storage */
-     aa = (float *) vm_literal(sizeof(a));
+     float *aa = (float *) vm_literal(sizeof(a));
      memcpy(aa, a, sizeof(a));
-#endif
 
      int entry;
      vmlabel lab1 = vm_newlab(), lab2 = vm_newlab();
@@ -88,13 +80,12 @@ void (*compile3(void))(int, float *) {
      vm_label(lab1);
      vm_gen(BGE, i, n, lab2);
      vm_gen(LSH, t, i, 2);
-     vm_gen(LDW, x, t, vm_addr(*aa));
+     vm_gen(LDW, x, t, vm_addr(aa));
      vm_gen(ADDf, s, s, x);
      vm_gen(ADD, i, i, 1);
      vm_gen(JUMP, lab1);
      vm_label(lab2);
      vm_gen(STW, s, y);
-     vm_gen(RET);
 
      vm_end();
      return (void (*)(int, float *)) vm_func(entry);
@@ -109,7 +100,7 @@ int (*compile4(void))(void) {
      vm_gen(STB, x, vm_base, 0);
      vm_gen(LDB, y, vm_base, 0);
      vm_gen(MOV, vm_ret, y);
-     vm_gen(RET);
+
      vm_end();
      return (int (*)(void)) vm_func(entry);
 }

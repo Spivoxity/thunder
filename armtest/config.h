@@ -60,3 +60,5 @@
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */
+
+#define CODEPAGE 4096

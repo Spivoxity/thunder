@@ -53,9 +53,9 @@
      p(CONVid) p(CONVis)                                            \
      /* Load and store */                                           \
      p(LDB) p(LDBu) p(LDS) p(LDSu) p(LDW) p(LDQ)                    \
-     p(STW) p(STB) p(STQ) p(STS) p(LDKW)                            \
-     /* Call and return */                                          \
-     p(PREP) p(ARG) p(CALL) p(GETARG) p(RET) p(JUMP)                \
+     p(STW) p(STB) p(STQ) p(STS)                                    \
+     /* Call and jump */                                            \
+     p(PREP) p(ARG) p(CALL) p(GETARG) p(JUMP)                       \
      /* 64-bit arithmetic (M64X32 only) */                          \
      p(ADDq) p(SUBq) p(MULq) p(NEGq) p(MOVq) p(SXTq)                \
      p(LTq) p(LEq) p(EQq) p(GEq) p(GTq) p(NEq)                      \
@@ -125,8 +125,6 @@ LDQ/STQ ra/fa, rb, imm
   -- load/store double
 ZEROf/ZEROd fa
   -- set float/double register to zero
-LDKW ra/fa, imm
-  -- load register with constant from specified address
 SXTOFF ra, rb
   -- sign extend an addressing offset (typically from 32 to 64 bits)
 ADDOFF ra, rb, rc
@@ -137,8 +135,6 @@ used only in special patterns.
 
 GETARG ra, imm
   -- fetch argument at offset imm (must be used first in the routine)
-RET
-  -- return from subroutine
 PREP imm
   -- prepare subroutine call with specified number of arguments
 ARG ra/imm
@@ -168,13 +164,12 @@ GETARG instructions:
 	GETARG rz, 2
 
 (any other instruction may destroy the arguments, so it is necessary
-to fetch them into registers immediately.)  The rest of the procedure
-body follows, and ends with a single RET instruction.
+to fetch them into registers immediately.)
 
 To return a result, the procedure code moves the result into a special
-register ret, then immediately branches to the RET instruction.  Since
-the ret register may be identical with one of the working registers,
-any other intervening code may destroy the return value.
+register ret, then immediately branches to the end of the procedure.
+Since the ret register may be identical with one of the working
+registers, any other intervening code may destroy the return value.
 
 Note that Keiko procedures are compiled into subroutines that accept
 one argument (the value of the Keiko stack pointer) and return no
@@ -242,8 +237,7 @@ void vm_gen3rri(operation op, vmreg a, vmreg b, int c);
 void vm_gen3rrj(operation op, vmreg a, vmreg b, vmlabel lab);
 void vm_gen3rij(operation op, vmreg a, int b, vmlabel lab);
 
-#define vm_addr(x) _vm_addr(&(x))
-int _vm_addr(void *x);
+int vm_addr(void *x);
 
 unsigned vm_begin_locals(const char *name, int n, int locs);
 #define vm_begin(name, n) vm_begin_locals(name, n, 0);
@@ -257,6 +251,9 @@ void *vm_scratch(int size);
 typedef void (*funptr)(void);
 
 int vm_wrap(funptr fun);
+
+void *vm_literal_align(int n, int almt);
+#define vm_literal(n) vm_literal_align(n, 4);
 
 funptr vm_func(int fun);
 
@@ -278,7 +275,7 @@ extern int vm_aflag;
 #define _SELECT(p, q, r, s, t, ...) t
 
 #define vm_gen(...) \
-     _SELECT(__VA_ARGS__, vm_gen3, vm_gen2, vm_gen1, vm_gen0)(__VA_ARGS__)
+     _SELECT(__VA_ARGS__, vm_gen3, vm_gen2, vm_gen1)(__VA_ARGS__)
 
 #define intcases(r) int: r, unsigned: r, char: r
 

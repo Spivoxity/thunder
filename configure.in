@@ -162,15 +162,18 @@ AC_ARG_ENABLE(debug,
 AC_SUBST(DEBUG)
 
 # Option jit
+CODEPAGE=16384
 case $host in
   i?86-*|x86_64-*) 
     VM=vm386.o
     AC_DEFINE(NEED_FPINIT, 1, [Reboot FPU for each primitive]);;
   armv6l-*|armv7l-*|arm-*)
-    VM=vmpi.o
+    VM=vmpi.o; CODEPAGE=4096
     AC_DEFINE(USE_FLUSH, 1, [Whether to flush the cache]);;
 esac
 AC_SUBST(VM)
+AC_DEFINE_UNQUOTED([CODEPAGE], $CODEPAGE,
+  [Size of block allocated for JIT code])
 
 # The endgame
 AC_OUTPUT
