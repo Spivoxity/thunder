@@ -87,7 +87,7 @@ void vm_debug2(const char *fmt, ...) {
      if (vm_debug < 2) return;
 
      va_start(va, fmt);
-     printf("---   ");
+     printf("---   %#x: ", (unsigned) (ptr) pc);
      vprintf(fmt, va);
      va_end(va);
 
@@ -120,6 +120,17 @@ char *fmt_val(int v) {
           sprintf(buf, "<addr>");
      else
           sprintf(buf, "%#x", v);
+
+     return buf;
+}
+
+char *fmt_val64(uint64 v) {
+     static char buf[32];
+
+     if (vm_aflag)
+          sprintf(buf, "<addr64>");
+     else
+          sprintf(buf, "%#llx", v);
 
      return buf;
 }

@@ -69,12 +69,23 @@ void word(int x) {
      pc += 4;
 }
 
+/* qword -- contribute a 64-bit quantity */
+void qword(uint64 x) {
+     // Assume unaligned store is OK
+     * (uint64 *) pc = x;
+     pc += 8;
+}
+
 /* vm_literal_align -- allocate aligned space in code buffer */
 void *vm_literal_align(int n, int a) {
      vm_space(n+a);
      limit = (code_addr) (((ptr) limit - n) & ~(a-1));
      return limit;
 }
+
+#ifdef FREEBSD
+#define USE_MPROTECT 1
+#endif
 
 #ifdef USE_MPROTECT
 #include <sys/mman.h>
@@ -142,7 +153,7 @@ static void vm_flush(void) {
 #endif
 
 /* vm_begin -- begin new procedure */
-unsigned vm_begin_locals(const char *name, int n, int locs) {
+void *vm_begin_locals(const char *name, int n, int locs) {
      proc_name = name;
      vm_space(MIN);
      proc_beg = pc;
@@ -213,11 +224,8 @@ int vm_addr(void *p) {
 }
 
 #ifndef M64X32
-funptr vm_func(int fun) { return (funptr) fun; }
 int vm_wrap(funptr fun) { return (int) fun; }
 #else
-funptr vm_func(int fun) { return (funptr) (ptr) fun; }
-
 #ifndef NO_WRITEXEC
 int vm_wrap(funptr fun) { return vm_tramp(fun); }
 #else

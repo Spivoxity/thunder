@@ -50,26 +50,22 @@ all: libthunder.a
 
 ALL_CFLAGS = $(RTFLAGS) -Wall -I . -I src 
 
-libthunder.a: src/$(VM) src/labels.o src/vmdebug.o src/codebuf.o
+libthunder.a: src/$(VM) src/labels.o src/vmdebug.o src/codebuf.o src/vmalloc.o
 	$(AR) cr $@ $^; $(RANLIB) $@
 
 %.o : %.c
 	$(CC) $(ALL_CFLAGS) -c $< -o $@
 
-fact: src/fact.o libthunder.a
-	$(CC) $^ -o $@
-
-mgrep: mgrep.o libthunder.a
+fact: fact.o libthunder.a
 	$(CC) $^ -o $@
 
 ## Cleanup
 
 # clean: remove all object files
 clean:
-	rm -f libthunder.a src/*.o
+	rm -f libthunder.a src/*.o *.o fact mgrep
 
 quiteclean: clean
-	rm -f fact mgrep
 
 # distclean: also remove all non-distributed files
 distclean: quiteclean

@@ -26,3 +26,4 @@ vm386.o
 vmdebug.o
 fact.o
 autom4te.cache
+src/vmalloc.o

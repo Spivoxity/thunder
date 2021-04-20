@@ -1,5 +1,5 @@
 /*
- * vminternal.h
+ * vmalloc.c
  * 
  * This file is part of the Oxford Oberon-2 compiler
  * Copyright (c) 2006--2016 J. M. Spivey
@@ -28,65 +28,52 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define pc vm_pc
-#define byte vm_byte
-#define word vm_word
-#define qword vm_qword
-#define modify vm_modify
-#define fmt_val vm_fmt_val
-#define fmt_lab vm_fmt_lab
+#include "config.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-typedef unsigned char *code_addr;
-
-typedef long long int64;
-typedef unsigned long long uint64;
+#ifdef LINUX
+#include <sys/mman.h>
 
 #ifdef M64X32
-typedef uint64 ptr;
+#define MMAP_FLAGS MAP_PRIVATE|MAP_32BIT|MAP_ANONYMOUS
 #else
-typedef unsigned ptr;
+#define MMAP_FLAGS MAP_PRIVATE|MAP_ANONYMOUS
 #endif
 
-struct _vmreg {
-     const char *vr_name;
-     int vr_reg;
-};
+void *vm_alloc(int size) {
+     static void *last_addr = NULL;
 
-#define BRANCH 1
-#define CASELAB 2
-#define ABS 3
-#define HI16 4
-#define LO16 5
+     // Round up to whole pages
+     size = (size + PAGESIZE - 1) & ~(PAGESIZE-1);
 
-extern code_addr pc;
+     void *p = mmap(last_addr, size, PROT_READ|PROT_WRITE, MMAP_FLAGS, -1, 0);
 
-void vm_space(int space);
-void byte(int x);
-void modify(int bit);
-void word(int x);
-void qword(uint64 x);
-void *vm_prelude(int n, int locs);
-void vm_postlude(void);
-void vm_chain(code_addr p);
-void vm_reset(void);
-void vm_patch(code_addr loc, code_addr lab);
-void vm_branch(int kind, code_addr loc, vmlabel lab);
-void vm_panic(const char *fmt, ...);
-void vm_unknown(const char *where, operation op);
-int vm_print(code_addr p);
-int vm_tramp(funptr fun);
+     if (p == MAP_FAILED) return NULL;
 
-char *fmt_val(int v);
-char *fmt_val64(uint64 v);
-char *fmt_lab(vmlabel lab);
-
-#ifdef DEBUG
-void vm_debug1(int op, int nrands, ...);
-void vm_debug2(const char *fmt, ...);
-void vm_done(void);
-#else
-#define vm_debug1(op, nrands, ...)
-#define vm_debug2(fmt, ...)
-#define vm_done()
+#ifdef M64X32
+     if ((((unsigned long) p) & ~0x7fffffff) != 0) {
+          fprintf(stderr, "inaccessible memory allocated at %p", p);
+          exit(2);
+     }
 #endif
 
+     last_addr = p + size;
+     return p;
+}
+
+#else
+
+void *vm_alloc(int size) {
+     void *mem = NULL;
+     if (posix_memalign(&mem, 4096, size) < 0) {
+          fprintf(stderr, "Allocation failed\n");
+          exit(2);
+     }
+
+     printf("Alloc %d at %p\n", size, mem);
+
+     return mem;
+}
+
+#endif

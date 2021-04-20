@@ -7,7 +7,7 @@
 typedef int (*funcp)(int);
 
 funcp compile(void) {
-     int entry;
+     void *entry;
      vmlabel lab1 = vm_newlab(), lab2 = vm_newlab();
      vmreg r0 = vm_ireg[0], r1 = vm_ireg[1];
 
@@ -26,11 +26,11 @@ funcp compile(void) {
 
      vm_end();
 
-     return (funcp) vm_func(entry);
+     return (funcp) entry;
 }
 
 funcp compile2(void) {
-     int entry;
+     void *entry;
 
      vmlabel lab1 = vm_newlab(), lab2 = vm_newlab();
      vmreg r0 = vm_ireg[0], r1 = vm_ireg[1];
@@ -48,13 +48,13 @@ funcp compile2(void) {
      vm_gen(SUB, r1, r0, 1);
      vm_gen(PREP, 1);
      vm_gen(ARG, r1);
-     vm_gen(CALL, (int) entry);
+     vm_gen(CALL, entry);
      vm_gen(LDW, r0, vm_base, 0);
      vm_gen(MUL, vm_ret, r0, vm_ret);
      
      vm_label(lab2);
      vm_end();
-     return (funcp) vm_func(entry);
+     return (funcp) entry;
 }
 
 static float a[] = { 3.0, 1.0, 4.0, 1.0, 5.0, 9.0 };
@@ -66,7 +66,7 @@ void (*compile3(void))(int, float *) {
      float *aa = (float *) vm_literal(sizeof(a));
      memcpy(aa, a, sizeof(a));
 
-     int entry;
+     void *entry;
      vmlabel lab1 = vm_newlab(), lab2 = vm_newlab();
      vmreg n = vm_ireg[0], i = vm_ireg[1], t = vm_ireg[2], y = vm_ireg[3];
      vmreg s = vm_freg[0], x = vm_freg[1];
@@ -88,11 +88,11 @@ void (*compile3(void))(int, float *) {
      vm_gen(STW, s, y);
 
      vm_end();
-     return (void (*)(int, float *)) vm_func(entry);
+     return (void (*)(int, float *)) entry;
 }
  
 int (*compile4(void))(void) {
-     int entry;
+     void *entry;
      vmreg x = vm_ireg[2], y = vm_ireg[0];
 
      entry = vm_begin_locals("foo", 0, 4);
@@ -102,7 +102,7 @@ int (*compile4(void))(void) {
      vm_gen(MOV, vm_ret, y);
 
      vm_end();
-     return (int (*)(void)) vm_func(entry);
+     return (int (*)(void)) entry;
 }
 
 int main(int argc, char *argv[]) {
@@ -130,36 +130,3 @@ int main(int argc, char *argv[]) {
      printf("The character is %c\n", (char) fp4());
      return 0;
 }
-
-#ifndef M64X32
-
-void *vm_alloc(int size) {
-     void *mem = NULL;
-     if (posix_memalign(&mem, 4096, size) < 0) {
-          fprintf(stderr, "Allocation failed\n");
-          exit(2);
-     }
-     return mem;
-}
-
-#else
-
-#include <sys/mman.h>
-
-void *vm_alloc(int size) {
-     void *p;
-     static void *last_addr = NULL;
-
-     p = mmap(last_addr, size, PROT_READ|PROT_WRITE, 
-	      MAP_PRIVATE|MAP_32BIT|MAP_ANONYMOUS, -1, 0);
-
-     if (p == MAP_FAILED) return NULL;
-     if ((((unsigned long) p) & ~0x7fffffff) != 0) {
-          fprintf(stderr, "inaccessible memory allocated at %p", p);
-          exit(2);
-     }
-     last_addr = p + size;
-     return p;
-}
-
-#endif

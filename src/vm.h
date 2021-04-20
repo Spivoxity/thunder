@@ -59,10 +59,7 @@
      /* 64-bit arithmetic (M64X32 only) */                          \
      p(ADDq) p(SUBq) p(MULq) p(NEGq) p(MOVq) p(SXTq)                \
      p(LTq) p(LEq) p(EQq) p(GEq) p(GTq) p(NEq)                      \
-     p(BLTq) p(BLEq) p(BEQq) p(BGEq) p(BGTq) p(BNEq)                \
-     /* Indexed loads and stores */                                 \
-     p(LDWx) p(STWx) p(LDQx) p(STQx)                                \
-     p(LDSx) p(STSx) p(IDXS) p(IDXW) p(IDXQ)
+     p(BLTq) p(BLEq) p(BEQq) p(BGEq) p(BGTq) p(BNEq)
 
 #define __op1__(op) op,
 
@@ -97,16 +94,12 @@ BLTu/BGEu ra, rb/imm, lab
   -- unsigned conditional branches
 JUMP lab
   -- unconditional branch
-IJUMP ra, imm
-  -- indexed jump with implicit multiplication
 EQ/NE/LT/LE/GT/GE ra, rb, rb/imm                         
   -- comparisons with boolean result
 EQf/NEf/LTf/LEf/GTf/GEf ra, fb, fc
   -- float comparisons with boolean result
 EQd/NEd/LTd/LEd/GTd/GEd ra, fb, fc                 
   -- double comparisons with boolean result
-SXT ra, rb
-  -- convert integer to short (AND with 0xffff and sign extend)    
 CONVif/CONVid fa, rb
   -- convert integer to float or double
 CONVfd/CONVdf fa, fb
@@ -125,10 +118,6 @@ LDQ/STQ ra/fa, rb, imm
   -- load/store double
 ZEROf/ZEROd fa
   -- set float/double register to zero
-SXTOFF ra, rb
-  -- sign extend an addressing offset (typically from 32 to 64 bits)
-ADDOFF ra, rb, rc
-  -- add two addressing offsets.
 
 The remaining instructions are associated with subroutine calls, and are
 used only in special patterns.
@@ -175,7 +164,7 @@ Note that Keiko procedures are compiled into subroutines that accept
 one argument (the value of the Keiko stack pointer) and return no
 result.  The parameters to a Keiko procedure are passed in a separate
 memory area from the host's subroutine stack, and any result is
-assigned to a global variable ob_res.
+also returned in the same area.
 
 
 IMPLEMENTATION HINTS
@@ -228,18 +217,21 @@ void vm_label(vmlabel lab);
 void vm_gen0(operation op);
 void vm_gen1r(operation op, vmreg a);
 void vm_gen1i(operation op, int a);
+void vm_gen1a(operation op, void *a);
 void vm_gen1j(operation op, vmlabel lab);
 void vm_gen2rr(operation op, vmreg a, vmreg b);
 void vm_gen2ri(operation op, vmreg a, int b);
+void vm_gen2ra(operation op, vmreg a, void *b);
 void vm_gen2rj(operation op, vmreg a, vmlabel b);
 void vm_gen3rrr(operation op, vmreg a, vmreg b, vmreg c);
 void vm_gen3rri(operation op, vmreg a, vmreg b, int c);
 void vm_gen3rrj(operation op, vmreg a, vmreg b, vmlabel lab);
 void vm_gen3rij(operation op, vmreg a, int b, vmlabel lab);
+void vm_gen4rrrs(operation op, vmreg a, vmreg b, vmreg c, int s);
 
 int vm_addr(void *x);
 
-unsigned vm_begin_locals(const char *name, int n, int locs);
+void * vm_begin_locals(const char *name, int n, int locs);
 #define vm_begin(name, n) vm_begin_locals(name, n, 0);
 void vm_end(void);
 
@@ -254,8 +246,6 @@ int vm_wrap(funptr fun);
 
 void *vm_literal_align(int n, int almt);
 #define vm_literal(n) vm_literal_align(n, 4);
-
-funptr vm_func(int fun);
 
 /* vm_procsize -- size of last procedure */
 int vm_procsize(void);
@@ -272,16 +262,16 @@ extern int vm_aflag;
 
 /* Fancy _Generic stuff to provide overloading of vm_gen */
 
-#define _SELECT(p, q, r, s, t, ...) t
+#define _SELECT(p, q, r, s, t, u, ...) u
 
 #define vm_gen(...) \
-     _SELECT(__VA_ARGS__, vm_gen3, vm_gen2, vm_gen1)(__VA_ARGS__)
+     _SELECT(__VA_ARGS__, vm_gen4, vm_gen3, vm_gen2, vm_gen1)(__VA_ARGS__)
 
 #define intcases(r) int: r, unsigned: r, char: r
 
 #define vm_gen1(op, a)                                                  \
      _Generic(a, default: vm_gen1r, intcases(vm_gen1i),                 \
-              vmlabel: vm_gen1j)(op, a)
+              vmlabel: vm_gen1j, void *: vm_gen1a)(op, a)
 
 #define vm_gen2(op, a, b)                                               \
      _Generic(b, default: vm_gen2rr, intcases(vm_gen2ri),               \
@@ -292,3 +282,5 @@ extern int vm_aflag;
               vmlabel: _Generic(b, default: vm_gen3rrj,                 \
                                 intcases(vm_gen3rij)))(op, a, b, c)
 
+#define vm_gen4(op, a, b, c, d)                 			\
+     vm_gen4rrrs(op, a, b, c, d)
