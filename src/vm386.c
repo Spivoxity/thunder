@@ -1487,7 +1487,7 @@ void *vm_prelude(int n, int locs) {
      if (locals > argsp)
           sub64_i(rSP, locals - argsp);
 #endif
-     return (int) (address) entry;
+     return entry;
 }
 
 static void retn(void) {

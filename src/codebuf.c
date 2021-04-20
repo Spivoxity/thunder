@@ -35,9 +35,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Define to forbid pages from being both writable and executable */
-// #define NO_WRITEXEC 1
-
 #ifdef LINUX
 #define USE_MPROTECT 1
 #endif
@@ -118,27 +115,6 @@ static void vprot(void *p, long unsigned flags) {
 #define prot_writexec(p) vprot(p, PAGE_EXECUTE_READWRITE)
 #endif
 
-#ifdef NO_WRITEXEC
-#define PAGES 8
-static code_addr page[PAGES];
-static int npages = -1;
-
-static void set_write(void) {
-     npages = 0;
-     if (codebuf != NULL) {
-          page[npages++] = codebuf;
-          prot_write(codebuf);
-     }
-}
-
-static void set_exec(void) {
-     for (int i = 0; i < npages; i++) {
-          prot_exec(page[i]);
-     }
-     npages = -1;
-}
-#endif
-
 #ifdef USE_FLUSH
 #define FRAGS 16
 static code_addr fragbeg[FRAGS], fragend[FRAGS];
@@ -157,9 +133,6 @@ void *vm_begin_locals(const char *name, int n, int locs) {
      proc_name = name;
      vm_space(MIN);
      proc_beg = pc;
-#ifdef NO_WRITEXEC
-     set_write();
-#endif
 #ifdef USE_FLUSH
      nfrags = 0; fragbeg[0] = pc;
 #endif
@@ -171,12 +144,7 @@ void vm_space(int space) {
      if (codebuf == NULL || pc + space > limit - MARGIN) {
 	  code_addr p = (code_addr) vm_alloc(CODEPAGE);
 	  if (codebuf != NULL) vm_chain(p);
-#ifdef NO_WRITEXEC
-          if (npages == PAGES) vm_panic("too many pages");
-          page[npages++] = p;
-#else
           prot_writexec(p);
-#endif
 #if USE_FLUSH
 	  fragend[nfrags++] = pc;
 	  if (nfrags >= FRAGS) vm_panic("too many frags");
@@ -203,9 +171,6 @@ void vm_end(void) {
           fwrite(proc_beg, 1, pc-proc_beg, fp);
           fclose(fp);
      }
-#ifdef NO_WRITEXEC
-     set_exec();
-#endif
 #ifdef USE_FLUSH
      fragend[nfrags++] = pc;
      vm_flush();
@@ -226,18 +191,5 @@ int vm_addr(void *p) {
 #ifndef M64X32
 int vm_wrap(funptr fun) { return (int) fun; }
 #else
-#ifndef NO_WRITEXEC
 int vm_wrap(funptr fun) { return vm_tramp(fun); }
-#else
-int vm_wrap(funptr fun) {
-     if (npages >= 0)
-          return vm_tramp(fun);
-     else {
-          set_write();
-          int r = vm_tramp(fun);
-          set_exec();
-          return r;
-     }
-}
-#endif
 #endif
