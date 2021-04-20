@@ -26,7 +26,7 @@ funcp compile(void) {
 
      vm_end();
 
-     return (funcp) entry;
+     return entry;
 }
 
 funcp compile2(void) {
@@ -54,7 +54,7 @@ funcp compile2(void) {
      
      vm_label(lab2);
      vm_end();
-     return (funcp) entry;
+     return entry;
 }
 
 static float a[] = { 3.0, 1.0, 4.0, 1.0, 5.0, 9.0 };
@@ -88,7 +88,7 @@ void (*compile3(void))(int, float *) {
      vm_gen(STW, s, y);
 
      vm_end();
-     return (void (*)(int, float *)) entry;
+     return entry;
 }
  
 int (*compile4(void))(void) {
@@ -102,7 +102,7 @@ int (*compile4(void))(void) {
      vm_gen(MOV, vm_ret, y);
 
      vm_end();
-     return (int (*)(void)) entry;
+     return entry;
 }
 
 int main(int argc, char *argv[]) {

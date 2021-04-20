@@ -877,7 +877,7 @@ void vm_gen1i(operation op, int a) {
 }
 
 void vm_gen1a(operation op, void *a) {
-     vm_debug1(op, 1, fmt_val(a));
+     vm_debug1(op, 1, fmt_val((int) a));
      vm_space(0);
 
      switch (op) {

@@ -50,7 +50,7 @@ all: libthunder.a
 
 ALL_CFLAGS = $(RTFLAGS) -Wall -I . -I ../src
 
-libthunder.a: $(VM) labels.o vmdebug.o codebuf.o
+libthunder.a: $(VM) labels.o vmdebug.o codebuf.o vmalloc.o
 	$(AR) cr $@ $^; $(RANLIB) $@
 
 %.o : %.c
